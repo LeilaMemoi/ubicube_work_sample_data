@@ -1,3 +1,5 @@
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-11-13T23:31:11.311882Z","iopub.execute_input":"2024-11-13T23:31:11.312343Z","iopub.status.idle":"2024-11-13T23:31:34.049797Z","shell.execute_reply.started":"2024-11-13T23:31:11.312287Z","shell.execute_reply":"2024-11-13T23:31:34.048559Z"}}
+
 import tifffile as tiff
 import numpy as np
 import pandas as pd
@@ -120,19 +122,19 @@ def process_data(rgb_path, nir_path, parcel_path, building_path, output_path):
     
     impervious_mask = impervious_surfaces > 0  # Binary mask for impervious areas
 
-    # Calculate zonal statistics - sum of impervious pixels within each parcel polygon
-    stats = rasterstats.zonal_stats(parcels, impervious_surfaces_no_buildings, affine=src.transform, stats="sum", nodata=src.nodata)
+    # Calculate zonal statistics - count of impervious pixels within each parcel polygon
+    stats = rasterstats.zonal_stats(parcels, impervious_surfaces_no_buildings, affine=src.transform, stats="count", nodata=src.nodata)
 
-    # Add the impervious area (sum of impervious pixels) to the GeoDataFrame
-    parcels["impervious_area_pixels"] = [s['sum'] if s['sum'] is not None else 0 for s in stats]
-    parcels["impervious_area"] = parcels["impervious_area_pixels"] * 0.4  # To compute area in real world units(m2) by multiplying by a pixel area (0.2m resolution)
+    # Add the impervious area (count of impervious pixels) to the GeoDataFrame
+    parcels["imperv_pixels"] = [s['count'] if s['count'] is not None else 0 for s in stats]
+    parcels["imperv_area"] = parcels["imperv_pixels"] * 0.4  # To compute area in real world units(m2) by multiplying by a pixel area (0.2m resolution)
 
     # Calculate impervious area percentage
-    parcels["unsealing_potential"] = (parcels["impervious_area"] / parcels.area) * 100
+    parcels["unsealing_potential"] = (parcels["imperv_area"] / parcels.area) * 100
     
     # Plot the parcels showing unsealing potential
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    parcels.plot(column="impervious_area", cmap="OrRd", legend=True, ax=ax)
+    parcels.plot(column="imperv_area", cmap="OrRd", legend=True, ax=ax)
     plt.title("Unsealing Potential of Parcels")
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
