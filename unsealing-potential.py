@@ -1,4 +1,8 @@
+# %% [code]
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-11-13T23:31:11.311882Z","iopub.execute_input":"2024-11-13T23:31:11.312343Z","iopub.status.idle":"2024-11-13T23:31:34.049797Z","shell.execute_reply.started":"2024-11-13T23:31:11.312287Z","shell.execute_reply":"2024-11-13T23:31:34.048559Z"}}
+# !pip install rasterio
+# !pip install rasterstats
+
 
 import tifffile as tiff
 import numpy as np
@@ -46,7 +50,7 @@ def normalize_bands(red, green, blue, nir):
 
 # Function to compute NDVI
 def compute_ndvi(nir_norm, red_norm):
-    denominator_zero_mask = (nir_norm + red_norm) == 0
+    denominator_zero_mask = (nir_norm + red_norm) == 0 #For zero divisions
     ndvi = np.where(denominator_zero_mask, 0, (nir_norm - red_norm) / (nir_norm + red_norm))
     return ndvi
 
@@ -78,6 +82,15 @@ def plot_segments(image, segments, boundaries):
     ax[2].set_title(f'Segments with boundaries')
 
     plt.show()
+    
+# Calculate ndvi values for each segment and output as a dataframe
+def calc_segment_ndvi(seg_arr, img_arr):
+    spec_feats = regionprops_table(
+        label_image = seg_arr,
+        intensity_image = img_arr,
+        properties = ["label", "intensity_mean"]
+        )
+    return pd.DataFrame(spec_feats)
 
 # Function to map NDVI values back to the image segments
 def map_segment_ndvi(segments, seg_ndvi):
@@ -94,15 +107,15 @@ def process_data(rgb_path, nir_path, parcel_path, building_path, output_path):
 
     # Normalize the bands
     red_norm, green_norm, blue_norm, nir_norm = normalize_bands(red, green, blue, nir)
-
-    # Compute NDVI
+    
+    # Compute image NDVI
     ndvi = compute_ndvi(nir_norm, red_norm)
 
     # Perform slic image segmentation
     slic_params = {'n_segments': 1000, 'compactness': 0.5}
     segments, boundaries = image_segmentation(rgb, algorithm='slic', algorithm_params=slic_params)
 
-    # Calculate NDVI values for each segment
+    # Calculate NDVI values for each segment: dataframe
     seg_ndvi = calc_segment_ndvi(segments, ndvi)
 
     # Map NDVI values back to segments
@@ -115,12 +128,10 @@ def process_data(rgb_path, nir_path, parcel_path, building_path, output_path):
     impervious_surfaces = np.where((mapped_ndvi >= ndvi_min) & (mapped_ndvi < ndvi_max), mapped_ndvi, np.nan)
     
     # Create a building mask where pixels within the building are 0 and the rest 1
-    building_mask = geometry_mask([geom for geom in buildings.geometry], transform=src.transform, out_shape=image.shape[1:])
+    building_mask = geometry_mask([geom for geom in buildings.geometry], transform=src.transform, out_shape=rgb.shape[:2])
 
     # Mask the impervious surfaces array with the building mask
     impervious_surfaces_no_buildings = np.where(building_mask, impervious_surfaces, np.nan)
-    
-    impervious_mask = impervious_surfaces > 0  # Binary mask for impervious areas
 
     # Calculate zonal statistics - count of impervious pixels within each parcel polygon
     stats = rasterstats.zonal_stats(parcels, impervious_surfaces_no_buildings, affine=src.transform, stats="count", nodata=src.nodata)
@@ -132,7 +143,7 @@ def process_data(rgb_path, nir_path, parcel_path, building_path, output_path):
     # Calculate impervious area percentage
     parcels["unsealing_potential"] = (parcels["imperv_area"] / parcels.area) * 100
     
-    # Plot the parcels showing unsealing potential
+    # Plot the parcels showing unsealing potential in square metres
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     parcels.plot(column="imperv_area", cmap="OrRd", legend=True, ax=ax)
     plt.title("Unsealing Potential of Parcels")
