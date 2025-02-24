@@ -1,12 +1,6 @@
 # Automated Workflow for Assessing Urban Unsealing Potential
+A Python script that calculates the "unsealing potential" (sealed soil without buildings, measured in m²) for individual real estate properties (land parcels). The script enables ranking properties within a given geographical area based on their unsealing potential, allowing for the identification of the most promising properties for soil unsealing. This ranking can support the design of targeted measures to reduce soil sealing effectively.
 
-This workflow automates the process of identifying impervious surfaces using aerial imagery and vector datasets. It includes data preprocessing, segmentation, analysis, and visualization, ensuring efficiency and accuracy in extracting urban surface characteristics.
-
-## Overview
-
-### User Story
-
-As a geospatial analyst, I want to have a Python script that calculates the "unsealing potential" (sealed soil without buildings in m²) for individual real estate properties (land parcels) so that I can rank properties within any given geographical area with respect to their unsealing potential and eventually design measures to reduce soil sealing for the most promising (highest unsealing potential) properties.
 ### Data
 
 Aerial imagery: 20cm spatial resolution, RGB + NIR.
@@ -15,7 +9,7 @@ Building Footprints: OpenStreetMap data.
 
 Parcel/property boundaries
 
-## Workflow
+## Workflow overview
 ### 1. Data Ingestion 
 
 Reads RGB and NIR aerial imagery using rasterio.
